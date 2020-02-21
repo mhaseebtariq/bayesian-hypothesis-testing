@@ -113,9 +113,3 @@ print(hypothesis_results_continuous)
 ```
 
     {'A_beats_B': 14.42, 'A_beats_C': 14.42, 'A_beats_D': 0.0, 'B_beats_A': 0.0, 'B_beats_C': 0.0, 'B_beats_D': 0.0, 'C_beats_A': 0.0, 'C_beats_B': 0.0, 'C_beats_D': 0.0, 'D_beats_A': 100.0, 'D_beats_B': 100.0, 'D_beats_C': 100.0}
-
-
-
-```python
-
-```
