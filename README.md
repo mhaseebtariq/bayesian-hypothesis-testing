@@ -14,7 +14,7 @@ except ImportError:
 import numpy as np
 ```
 
-### TODO: Document the code
+### TODO: Add more details, with visualisations.
 
 
 ```python
