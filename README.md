@@ -14,7 +14,7 @@ except ImportError:
 import numpy as np
 ```
 
-### TODO: Add more details, with visualisations.
+### TODO: Add more details, supported by visualisations
 
 
 ```python
