@@ -11,21 +11,42 @@ try:
     import numpy as np
 except ImportError:
     !{sys.executable} -m pip install numpy==1.17.4
-import numpy as np
-```
+try:
+    import seaborn as sns
+except ImportError:
+    !{sys.executable} -m pip install seaborn==0.9.0
 
-### TODO: Add more details, supported by visualisations
+import numpy as np
+import seaborn as sns
+```
 
 
 ```python
 np.random.seed(10)
+
+# Set the figure size for seaborn
+sns.set(rc={'figure.figsize':(11.7, 8.27)})
 ```
+
+### Data Sample
+Suppose we have transactional data (per segment) from a retail store, that looks like:
+
+| Segment A | Segment B | Segment C | Segment D |
+|---|---|---|---|
+| 1 | 3 | 1 | 2 |
+| 0 | 1 | 2 | 0 |
+| ... | ... | ... | ... |
+| 2 | 0 | 3 | 8 |
+
+Each value is an amount spent by a customer for that segment
+
 
 
 ```python
 # Data generation
 
-unique_values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+customers_per_segment = 100000
+unique_purchase_values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 variations_distributions = {
     'A': [0.6, 0.2, 0.1, 0.05, 0.05, 0, 0, 0, 0, 0],
     'B': [0.65, 0.2, 0.1, 0.03, 0.02, 0, 0, 0, 0, 0],
@@ -34,23 +55,29 @@ variations_distributions = {
 }
 
 purchases = {
-    segment: np.random.choice(unique_values, (100000,), p=pvals) 
+    segment: np.random.choice(unique_purchase_values, (customers_per_segment,), p=pvals) 
     for segment, pvals in variations_distributions.items()
 }
 ```
 
+## Binary variable
+Has the customer in a particular segment made a purchase (amount > 0) or not?
+
 
 ```python
-# Binary variable
-
+# Setting uniform priors (no bias) for test and control segments
 alpha_prior, beta_prior = 1, 1
+# Number of samples to draw from the beta distribution
 beta_simulation_size = 100000
 
 simulation_data_binary = {}
 for variation, variation_data in purchases.items():
+    # Number of "conversions" - customers who made a purchase
     alpha = len(variation_data[variation_data > 0])
+    # Number of "failures" - customers who did not make a purchase (amount = 0)
     beta = len(variation_data) - alpha
     
+    # Given alpha and beta, draw random samples from a beta distribution, "beta_simulation_size" times
     simulation = np.random.beta(alpha + alpha_prior, beta + beta_prior, size=beta_simulation_size)
     simulation_data_binary[variation] = simulation
 
@@ -62,6 +89,7 @@ for segment_control, segment_test in itertools.product(purchases.keys(), purchas
     simulation_control = simulation_data_binary[segment_control]
     simulation_test = simulation_data_binary[segment_test]
 
+    # How many times, out of the simulated probabilities, the control segment beats the test segment
     control_beats_test = simulation_control > simulation_test
     control_beats_test_probability = (sum(control_beats_test) / beta_simulation_size) * 100
     hypothesis_results_binary[f'{segment_control}_beats_{segment_test}'] = round(control_beats_test_probability, 2)
@@ -74,10 +102,26 @@ print(hypothesis_results_binary)
 
 
 ```python
+ax = sns.kdeplot(simulation_data_binary['A'], bw=0.05, shade=True, legend=True, label='A')
+sns.kdeplot(simulation_data_binary['B'], bw=0.05, shade=True, legend=True, label='B')
+ax.set(xlabel='Probability of "conversion"', ylabel='Density estimation for the simulations')
+_ = ax.set_title("A vs B", fontsize=20)
+```
+
+![Binary Comparison](binary_comparison.png)
+
+## Continuous variable
+The amount of money, a customer in a particular segment, has spent
+
+
+```python
 # Continuous variable
 
+# Number of bootstrap samples to draw from the purchase amounts data
 bootstrap_simulation_size = 5000
-probability_sample_size = 50000
+# Number of bootstrap samples to draw for the medians -
+# Calculated over the bootstrapped purchase amounts
+medians_simulation_size = 50000
 
 simulation_data_continuous = {}
 for variation, variation_data in purchases.items():
@@ -94,7 +138,7 @@ for variation, variation_data in purchases.items():
                              replace=True, p=pvals_aggregated)
     
     medians = np.median(draws, axis=1, overwrite_input=True)
-    simulation_data_continuous[variation] = np.random.choice(medians, probability_sample_size, replace=True)
+    simulation_data_continuous[variation] = np.random.choice(medians, medians_simulation_size, replace=True)
 
 hypothesis_results_continuous = {}
 for segment_control, segment_test in itertools.product(purchases.keys(), purchases.keys()):
@@ -105,7 +149,7 @@ for segment_control, segment_test in itertools.product(purchases.keys(), purchas
         simulation_data_continuous[segment_control] > 
         simulation_data_continuous[segment_test]
     )
-    control_beats_test_probability = number_of_times_better / probability_sample_size
+    control_beats_test_probability = number_of_times_better / medians_simulation_size
     control_beats_test_probability = round(control_beats_test_probability * 100, 2)
     hypothesis_results_continuous[f'{segment_control}_beats_{segment_test}'] = control_beats_test_probability
 
@@ -113,3 +157,15 @@ print(hypothesis_results_continuous)
 ```
 
     {'A_beats_B': 14.42, 'A_beats_C': 14.42, 'A_beats_D': 0.0, 'B_beats_A': 0.0, 'B_beats_C': 0.0, 'B_beats_D': 0.0, 'C_beats_A': 0.0, 'C_beats_B': 0.0, 'C_beats_D': 0.0, 'D_beats_A': 100.0, 'D_beats_B': 100.0, 'D_beats_C': 100.0}
+
+
+
+```python
+ax = sns.kdeplot(simulation_data_continuous['A'], bw=0.5, shade=True, legend=True, label='A')
+sns.kdeplot(simulation_data_continuous['B'], bw=0.5, shade=True, legend=True, label='B')
+sns.kdeplot(simulation_data_continuous['D'], bw=0.5, shade=True, legend=True, label='D')
+ax.set(xlabel='Median purchase amount', ylabel='Density estimation for the simulations')
+_ = ax.set_title("A vs B vs D", fontsize=20)
+```
+
+![Continuous Comparison](continuous_comparison.png)
