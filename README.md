@@ -169,3 +169,8 @@ _ = ax.set_title("A vs B vs D", fontsize=20)
 ```
 
 ![Continuous Comparison](continuous_comparison.png)
+
+## References
+1. https://cdn2.hubspot.net/hubfs/310840/VWO_SmartStats_technical_whitepaper.pdf
+2. https://docs.swrve.com/faqs/ab-testing-faq/bayesian-approach-to-ab-testing/
+3. http://blog.keithw.org/2013/02/q-what-is-difference-between-bayesian.html
